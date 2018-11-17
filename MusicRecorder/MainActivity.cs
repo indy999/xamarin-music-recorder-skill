@@ -7,28 +7,30 @@ using Android;
 using Android.Content.PM;
 using Android.Support.Design.Widget;
 using System.Threading.Tasks;
+using System.IO;
+using Android.Content.Res;
 
 namespace MusicRecorder
 {
     [Activity(Label = "MusicRecorder", MainLauncher = true, Icon = "@drawable/icon")]
     public class MainActivity : Activity
     {
+        static string filePath = "sample.wav";
+        byte[] buffer = null;
+
+        bool endRecording = false;
+        bool isRecording = true;
+
         private AudioTrack audioTrack;
         private AudioRecord audioRecorder;
         readonly string[] PermissionsAudio =
             {
-              Manifest.Permission.RecordAudio         
+              Manifest.Permission.RecordAudio
             };
 
         const int RequestLocationId = 0;
         Android.Views.View layout;
-        byte[] audioRecordBuffer;
-        byte[] audioTrackRecordBuffer;
-
-        private static  int SAMPLERATE = 8000;
-        private static ChannelIn RECORDER_CHANNELS = ChannelIn.Mono;
-        private static ChannelOut TRACK_CHANNELS = ChannelOut.Mono;
-        private static  Encoding AUDIO_ENCODING = Android.Media.Encoding.Pcm16bit;
+        byte[] audioBuffer;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -42,15 +44,25 @@ namespace MusicRecorder
             Button stopRecordingButton = FindViewById<Button>(Resource.Id.btnStopRecording);
             Button playbackButton = FindViewById<Button>(Resource.Id.btnPlayback);
 
-            startRecordingButton.Click += async (sender, e) => await StartRecordingButton_Click();
+            startRecordingButton.Click += async (sender, e) => await RequestRecordAudioPermission();
             stopRecordingButton.Click += StopRecordingButton_Click;
-            playbackButton.Click += PlaybackButton_Click;
+            playbackButton.Click += async (sender, e) => await PlaybackButton_Click(); ;
 
         }
 
-        private void PlaybackButton_Click(object sender, EventArgs e)
+        async Task PlaybackButton_Click()
         {
-            // PlayAudioTrack(audioRecorder.)
+            AssetManager assets = this.Assets;
+            long totalBytes = 37534;
+
+            BinaryReader binaryReader = new BinaryReader(assets.Open("sample.wav"));
+
+            audioBuffer = binaryReader.ReadBytes((Int32)totalBytes);
+
+            binaryReader.Close();
+
+
+            PlayAudioTrack(audioBuffer);
         }
 
         private void StopRecordingButton_Click(object sender, EventArgs e)
@@ -58,79 +70,66 @@ namespace MusicRecorder
             StopRecording();
         }
 
-        async Task StartRecordingButton_Click()
+        async Task StartRecordingButton_Click(object sender, EventArgs e)
         {
             await RequestRecordAudioPermission();
         }
 
         private void StopRecording()
         {
-            audioRecorder.Stop();
+            RecordAudio(false);
         }
 
-        private void PlayAudioTrack(byte[] audioBuffer)
+        async Task PlayAudioTrack(byte[] audioBuffer)
         {
-            audioTrack = new AudioTrack(
-             // Stream type
-             Stream.Music,
-             // Frequency
-             11025,
-             // Mono or stereo
-             ChannelOut.Mono,
-             // Audio encoding
-             Android.Media.Encoding.Pcm16bit,
-             // Length of the audio clip.
-             audioBuffer.Length,
-             // Mode. Stream or static.
-             AudioTrackMode.Stream);
+            var attributes = new AudioAttributes.Builder().SetUsage(AudioUsageKind.Media).SetContentType(AudioContentType.Movie).Build();
+
+            audioTrack = new AudioTrack(attributes, new AudioFormat.Builder()
+                .SetEncoding(Encoding.Pcm8bit)
+                .SetChannelMask(ChannelOut.Mono)
+                .SetSampleRate(11025).Build()
+                , audioBuffer.Length,
+                AudioTrackMode.Stream,
+                1);
+            //audioTrack = new AudioTrack(
+            // // Stream type
+            // Android.Media.Stream.Music,
+            // // Frequency
+            // 11025,
+            // // Mono or stereo
+            // ChannelOut.Mono,
+            // // Audio encoding
+            // Android.Media.Encoding.Pcm16bit,
+            // // Length of the audio clip.
+            // audioBuffer.Length,
+            // // Mode. Stream or static.
+            // AudioTrackMode.Stream);
 
             audioTrack.Play();
-            audioTrack.Write(audioBuffer, 0, audioBuffer.Length);
+            await audioTrack.WriteAsync(audioBuffer, 0, audioBuffer.Length);
         }
 
-        private async Task RecordAudio(bool isRunning)
+        private async Task RecordAudio(bool play)
         {
-            if (isRunning)
+
+            if (play)
             {
                 audioRecorder = FindAudioRecord();
-                if (audioRecorder == null || audioRecorder.State == State.Uninitialized)
-                {
-                    return;
-                }
+                //if (audioRecorder.State == State.Uninitialized)
+                //return;
 
-                audioRecordBuffer = new byte[audioRecorder.BufferSizeInFrames];
-                audioTrackRecordBuffer = new byte[audioRecorder.BufferSizeInFrames];
-
-                audioTrack = FindAudioTrack(audioTrack);
-                if (audioTrack == null)
-                {
-                    return;
-                }
-
-                audioTrack.SetPlaybackRate(SAMPLERATE);
-
-                audioTrackRecordBuffer = new byte[audioRecorder.BufferSizeInFrames];
-
+                audioBuffer = new byte[audioRecorder.BufferSizeInFrames];
                 audioRecorder.StartRecording();
-                audioTrack.Play();
-                var minbufferSizeRecorder = audioRecorder.BufferSizeInFrames;
 
-                //if the audio recording doesnt work change the buffers to short[] and divide by 2 as in example
-                while (isRunning)
+
+
+                while (play)
                 {
                     try
                     {
                         // Keep reading the buffer while there is audio input.
-                        await audioRecorder.ReadAsync(audioRecordBuffer, 0, minbufferSizeRecorder);
 
-                        for (int i = 0; i < audioTrackRecordBuffer.Length; i++)
-                        {
-                            audioTrackRecordBuffer[i] = audioRecordBuffer[i];
-                        }
-
-                        await audioTrack.WriteAsync(audioTrackRecordBuffer, 0, audioTrackRecordBuffer.Length);
-                        audioRecordBuffer = new byte[minbufferSizeRecorder];
-                        audioTrackRecordBuffer = new byte[minbufferSizeRecorder];
+                        //await audioRecorder.ReadAsync(audioBuffer, 0, audioBuffer.Length);
 
                         // Write out the audio file.
                     }
@@ -141,6 +140,8 @@ namespace MusicRecorder
                     }
                 }
             }
+
+            audioRecorder.Stop();
         }
 
         private static int[] mSampleRates = new int[] { 8000, 11025, 22050, 44100 };
@@ -170,34 +171,12 @@ namespace MusicRecorder
                         }
                         catch (Exception e)
                         {
-                           // Log.e(TAG, rate + "Exception, keep trying.", e);
+                            // Log.e(TAG, rate + "Exception, keep trying.", e);
                         }
                     }
                 }
             }
             return null;
-        }
-
-        public AudioTrack FindAudioTrack(AudioTrack audioTrack)
-        {
-            int bufferSize = AudioTrack.GetMinBufferSize(SAMPLERATE, TRACK_CHANNELS, AUDIO_ENCODING);
-            if (bufferSize != (int)Android.Media.TrackStatus.ErrorBadValue)
-            {
-                audioTrack = new AudioTrack(Stream.Music,
-                                 SAMPLERATE,
-                                 TRACK_CHANNELS,
-                                 AUDIO_ENCODING,
-                                 bufferSize,
-                                 AudioTrackMode.Stream);
-
-                audioTrack.SetPlaybackRate(SAMPLERATE);
-
-                if (audioTrack.State == AudioTrackState.Uninitialized)
-                {                    
-                    return null;
-                }
-            }
-            return audioTrack;
         }
 
         public override async void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
@@ -227,7 +206,7 @@ namespace MusicRecorder
             }
         }
 
-         async Task RequestRecordAudioPermission()
+        async Task RequestRecordAudioPermission()
         {
 
             string permission = PermissionsAudio[0];
