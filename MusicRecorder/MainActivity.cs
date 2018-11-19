@@ -9,12 +9,15 @@ using Android.Support.Design.Widget;
 using System.Threading.Tasks;
 using System.IO;
 using Android.Content.Res;
+using System.Threading;
 
 namespace MusicRecorder
 {
     [Activity(Label = "MusicRecorder", MainLauncher = true, Icon = "@drawable/icon")]
     public class MainActivity : Activity
     {
+        public Action<bool> RecordingStateChanged;
+
         static string filePath = "sample.wav";
         byte[] buffer = null;
 
@@ -45,7 +48,7 @@ namespace MusicRecorder
             Button playbackButton = FindViewById<Button>(Resource.Id.btnPlayback);
 
             startRecordingButton.Click += async (sender, e) => await RequestRecordAudioPermission();
-            stopRecordingButton.Click += StopRecordingButton_Click;
+            stopRecordingButton.Click += async (sender, e) => await StopRecordingButton_Click();
             playbackButton.Click += async (sender, e) => await PlaybackButton_Click(); ;
 
         }
@@ -65,19 +68,40 @@ namespace MusicRecorder
             PlayAudioTrack(audioBuffer);
         }
 
-        private void StopRecordingButton_Click(object sender, EventArgs e)
+        async Task StopRecordingButton_Click()
         {
-            StopRecording();
+            await StopRecording();
         }
+
+        public Boolean IsRecording
+        {
+            get { return (isRecording); }
+        }
+
+        private void RaiseRecordingStateChangedEvent()
+        {
+            if (RecordingStateChanged != null)
+                RecordingStateChanged(isRecording);
+        }
+
 
         async Task StartRecordingButton_Click(object sender, EventArgs e)
         {
+            Console.Out.WriteLine("START RECORDING EVENT");
+
             await RequestRecordAudioPermission();
         }
 
-        private void StopRecording()
+        async Task StopRecording()
         {
-            RecordAudio(false);
+
+
+            await Task.Run(()=> { Console.Out.WriteLine("STOP RECORDING EVENT"); });
+            //endRecording = true;
+            //Thread.Sleep(500); // Give it time to drop out.
+
+
+            //RecordAudio();
         }
 
         async Task PlayAudioTrack(byte[] audioBuffer)
@@ -109,39 +133,41 @@ namespace MusicRecorder
             await audioTrack.WriteAsync(audioBuffer, 0, audioBuffer.Length);
         }
 
-        private async Task RecordAudio(bool play)
+        private async Task RecordAudio()
         {
 
-            if (play)
+            while (true)
             {
-                audioRecorder = FindAudioRecord();
-                //if (audioRecorder.State == State.Uninitialized)
-                //return;
-
-                audioBuffer = new byte[audioRecorder.BufferSizeInFrames];
-                audioRecorder.StartRecording();
-
-
-
-                while (play)
+                if (endRecording)
                 {
-                    try
-                    {
-                        // Keep reading the buffer while there is audio input.
+                    endRecording = false;
+                    break;
+                }
 
-                        //await audioRecorder.ReadAsync(audioBuffer, 0, audioBuffer.Length);
+                try
+                {
+                    // Keep reading the buffer while there is audio input.
 
-                        // Write out the audio file.
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.Out.WriteLine(ex.Message);
-                        break;
-                    }
+                    //await audioRecorder.ReadAsync(audioBuffer, 0, audioBuffer.Length);
+
+                    // Write out the audio file.
+
+                    await Console.Out.WriteLineAsync("RECORDING SOUND");   
+                }
+                catch (Exception ex)
+                {
+                    Console.Out.WriteLine(ex.Message);
+                    break;
                 }
             }
 
+
             audioRecorder.Stop();
+            audioRecorder.Release();
+
+            isRecording = false;
+
+            RaiseRecordingStateChangedEvent();
         }
 
         private static int[] mSampleRates = new int[] { 8000, 11025, 22050, 44100 };
@@ -187,12 +213,13 @@ namespace MusicRecorder
                     {
                         if (grantResults[0] == Permission.Granted)
                         {
+
                             ////Permission granted
                             //var snack = Snackbar.Make(layout, "Location permission is available, getting lat/long.", Snackbar.LengthShort);
                             //snack.Show();
 
                             //await GetLocationAsync();
-                            await RecordAudio(true);
+                            await RecordAudio();
                         }
                         else
                         {
@@ -208,12 +235,19 @@ namespace MusicRecorder
 
         async Task RequestRecordAudioPermission()
         {
-
+            
             string permission = PermissionsAudio[0];
 
             if (CheckSelfPermission(permission) == Android.Content.PM.Permission.Granted)
             {
-                await RecordAudio(true);
+                Console.Out.WriteLine("RECORDING PERMISSION GRANTED");
+
+                endRecording = false;
+                isRecording = true;
+
+                InitialiseAudioRecording();
+
+                await RecordAudio();
                 return;
             }
 
@@ -227,6 +261,14 @@ namespace MusicRecorder
             }
 
             RequestPermissions(PermissionsAudio, RequestLocationId);
+        }
+
+        private void InitialiseAudioRecording()
+        {
+            audioRecorder = FindAudioRecord();
+
+            audioBuffer = new byte[audioRecorder.BufferSizeInFrames];
+            audioRecorder.StartRecording();
         }
     }
 }
