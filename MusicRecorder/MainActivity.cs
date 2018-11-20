@@ -47,7 +47,7 @@ namespace MusicRecorder
             Button stopRecordingButton = FindViewById<Button>(Resource.Id.btnStopRecording);
             Button playbackButton = FindViewById<Button>(Resource.Id.btnPlayback);
 
-            startRecordingButton.Click += async (sender, e) => await RequestRecordAudioPermission();
+            startRecordingButton.Click += async (sender, e) => await StartRecordingButton_Click();
             stopRecordingButton.Click += async (sender, e) => await StopRecordingButton_Click();
             playbackButton.Click += async (sender, e) => await PlaybackButton_Click(); ;
 
@@ -85,19 +85,22 @@ namespace MusicRecorder
         }
 
 
-        async Task StartRecordingButton_Click(object sender, EventArgs e)
+        Task StartRecordingButton_Click()
         {
-            Console.Out.WriteLine("START RECORDING EVENT");
+            Task recordAudioTask = Task.Run(async () =>
+            {
+                Console.Out.WriteLine("START RECORDING EVENT");
 
-            await RequestRecordAudioPermission();
+                await RequestRecordAudioPermission();
+            });
+            return recordAudioTask;
         }
 
         async Task StopRecording()
         {
 
-
-            await Task.Run(()=> { Console.Out.WriteLine("STOP RECORDING EVENT"); });
-            //endRecording = true;
+            await Console.Out.WriteLineAsync("STOP RECORDING EVENT CLICKED");
+            endRecording = true;
             //Thread.Sleep(500); // Give it time to drop out.
 
 
@@ -161,7 +164,7 @@ namespace MusicRecorder
                 }
             }
 
-
+            await Console.Out.WriteLineAsync("We successfully stopped recording.");
             audioRecorder.Stop();
             audioRecorder.Release();
 
