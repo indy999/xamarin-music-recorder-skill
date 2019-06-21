@@ -34,6 +34,7 @@ namespace MusicRecorder
         const int RequestLocationId = 0;
         Android.Views.View layout;
         byte[] audioBuffer;
+        private MemoryStream memoryStream;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -55,18 +56,18 @@ namespace MusicRecorder
 
         async Task PlaybackButton_Click()
         {
-            AssetManager assets = this.Assets;
-            long totalBytes = 37534;
+            //AssetManager assets = this.Assets;
+            //long totalBytes = 37534;
 
-            BinaryReader binaryReader = new BinaryReader(assets.Open("sample.wav"));
+            //BinaryReader binaryReader = new BinaryReader(assets.Open("sample.wav"));
 
-            audioBuffer = binaryReader.ReadBytes((Int32)totalBytes);
+            //audioBuffer = binaryReader.ReadBytes((Int32)totalBytes);
 
-            binaryReader.Close();
+            //binaryReader.Close();
 
-            if (audioBuffer.Length > 0)
+            if (memoryStream.Length > 0)
             {
-                PlayAudioTrack(audioBuffer);
+                PlayAudioTrack(memoryStream.ToArray());
             }
         }
 
@@ -140,6 +141,7 @@ namespace MusicRecorder
 
         private async Task RecordAudio()
         {
+            memoryStream = new MemoryStream();
 
             while (true)
             {
@@ -156,8 +158,9 @@ namespace MusicRecorder
                     await audioRecorder.ReadAsync(audioBuffer, 0, audioBuffer.Length);
 
                     // Write out the audio file.
+                    await memoryStream.WriteAsync(audioBuffer, 0, audioBuffer.Length);
 
-                    await Console.Out.WriteLineAsync("RECORDING SOUND. Buffer size:"+ audioBuffer.Length);   
+                    await Console.Out.WriteLineAsync("RECORDING SOUND. Memory stream size:"+ memoryStream.Length);   
                 }
                 catch (Exception ex)
                 {
