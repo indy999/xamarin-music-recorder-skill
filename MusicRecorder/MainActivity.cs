@@ -64,8 +64,10 @@ namespace MusicRecorder
 
             binaryReader.Close();
 
-
-            PlayAudioTrack(audioBuffer);
+            if (audioBuffer.Length > 0)
+            {
+                PlayAudioTrack(audioBuffer);
+            }
         }
 
         async Task StopRecordingButton_Click()
@@ -151,11 +153,11 @@ namespace MusicRecorder
                 {
                     // Keep reading the buffer while there is audio input.
 
-                    //await audioRecorder.ReadAsync(audioBuffer, 0, audioBuffer.Length);
+                    await audioRecorder.ReadAsync(audioBuffer, 0, audioBuffer.Length);
 
                     // Write out the audio file.
 
-                    await Console.Out.WriteLineAsync("RECORDING SOUND");   
+                    await Console.Out.WriteLineAsync("RECORDING SOUND. Buffer size:"+ audioBuffer.Length);   
                 }
                 catch (Exception ex)
                 {
