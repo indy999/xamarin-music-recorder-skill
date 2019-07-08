@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.IO;
 using Android.Content.Res;
 using System.Threading;
+using Environment = System.Environment;
 
 namespace MusicRecorder
 {
@@ -34,7 +35,21 @@ namespace MusicRecorder
         const int RequestLocationId = 0;
         Android.Views.View layout;
         byte[] audioBuffer;
+
+        private byte[] audioBufferTrack1;
+        private byte[] audioBufferTrack2;
+        private byte[] audioBufferTrack3;
+
+
         private MemoryStream memoryStream;
+
+        int[] mSampleRates = new int[] { 8000, 11025, 22050, 44100 };
+        int[] audioFormats = new int[] { (int)Encoding.Pcm8bit, (int)Encoding.Pcm16bit };
+        int[] channelConfigs = new int[] { (int)ChannelIn.Mono, (int)ChannelIn.Stereo };
+
+        int rate = 44100;
+        private Encoding audioEncoding = Encoding.Pcm16bit;
+        ChannelIn channelConfig = ChannelIn.Stereo;
 
         protected override void OnCreate(Bundle bundle)
         {
@@ -47,16 +62,61 @@ namespace MusicRecorder
             Button startRecordingButton = FindViewById<Button>(Resource.Id.btnStartRecording);
             Button stopRecordingButton = FindViewById<Button>(Resource.Id.btnStopRecording);
             Button playbackButton = FindViewById<Button>(Resource.Id.btnPlayback);
+            Button mixtrackButton = FindViewById<Button>(Resource.Id.btnMixTracks);
 
             startRecordingButton.Click += async (sender, e) => await StartRecordingButton_Click();
             stopRecordingButton.Click += async (sender, e) => await StopRecordingButton_Click();
-            playbackButton.Click += async (sender, e) => await PlaybackButton_Click(); ;
+            playbackButton.Click += async (sender, e) => await PlaybackButton_Click();
+            mixtrackButton.Click += async (sender, e) => await MixtrackButton_Click();
+
+
+        }
+
+        async Task MixtrackButton_Click()
+        {
+            AssetManager assets = this.Assets;
+            long totalBytesTrack1 = 121217;
+            long totalBytesTrack2 = 153271;
+            long totalBytesTrack3 = 117838;
+
+            long totalBytes = 37534;
+
+            rate = 11025;
+            audioEncoding = Encoding.Pcm8bit;
+
+            BinaryReader binaryReader = new BinaryReader(assets.Open("sample.wav"));
+
+            audioBuffer = binaryReader.ReadBytes((Int32)totalBytes);
+
+            binaryReader.Close();
+
+
+            binaryReader = new BinaryReader(assets.Open("Track 1.m4a"));
+
+            audioBufferTrack1 = binaryReader.ReadBytes((Int32)totalBytesTrack1);
+
+            binaryReader.Close();
+
+            binaryReader = new BinaryReader(assets.Open("Track 2.m4a"));
+
+            audioBufferTrack2 = binaryReader.ReadBytes((Int32)totalBytesTrack2);
+
+            binaryReader.Close();
+
+            binaryReader = new BinaryReader(assets.Open("Track 3.m4a"));
+
+            audioBufferTrack3 = binaryReader.ReadBytes((Int32)totalBytesTrack3);
+
+            binaryReader.Close();
+
+            await PlayAudioTrack(audioBuffer);
+
 
         }
 
         async Task PlaybackButton_Click()
         {
-            //AssetManager assets = this.Assets;
+            AssetManager assets = this.Assets;
             //long totalBytes = 37534;
 
             //BinaryReader binaryReader = new BinaryReader(assets.Open("sample.wav"));
@@ -64,10 +124,12 @@ namespace MusicRecorder
             //audioBuffer = binaryReader.ReadBytes((Int32)totalBytes);
 
             //binaryReader.Close();
+            string path = System.Environment.GetFolderPath(Environment.SpecialFolder.Personal);
 
             if (memoryStream.Length > 0)
             {
-                PlayAudioTrack(memoryStream.ToArray());
+                await PlayAudioTrack(memoryStream.ToArray());
+                //File.WriteAllBytes(path+"/test.wav",memoryStream.ToArray());
             }
         }
 
@@ -96,6 +158,7 @@ namespace MusicRecorder
 
                 await RequestRecordAudioPermission();
             });
+
             return recordAudioTask;
         }
 
@@ -105,35 +168,20 @@ namespace MusicRecorder
             await Console.Out.WriteLineAsync("STOP RECORDING EVENT CLICKED");
             endRecording = true;
             //Thread.Sleep(500); // Give it time to drop out.
-
-
-            //RecordAudio();
-        }
+            }
 
         async Task PlayAudioTrack(byte[] audioBuffer)
         {
-            var attributes = new AudioAttributes.Builder().SetUsage(AudioUsageKind.Media).SetContentType(AudioContentType.Movie).Build();
+            var attributes = new AudioAttributes.Builder().SetUsage(AudioUsageKind.Media).SetContentType(AudioContentType.Speech).Build();
 
             audioTrack = new AudioTrack(attributes, new AudioFormat.Builder()
-                .SetEncoding(Encoding.Pcm8bit)
+                .SetEncoding(audioEncoding)
                 .SetChannelMask(ChannelOut.Mono)
-                .SetSampleRate(11025).Build()
+                .SetSampleRate(rate).Build()
                 , audioBuffer.Length,
                 AudioTrackMode.Stream,
                 1);
-            //audioTrack = new AudioTrack(
-            // // Stream type
-            // Android.Media.Stream.Music,
-            // // Frequency
-            // 11025,
-            // // Mono or stereo
-            // ChannelOut.Mono,
-            // // Audio encoding
-            // Android.Media.Encoding.Pcm16bit,
-            // // Length of the audio clip.
-            // audioBuffer.Length,
-            // // Mode. Stream or static.
-            // AudioTrackMode.Stream);
+
 
             audioTrack.Play();
             await audioTrack.WriteAsync(audioBuffer, 0, audioBuffer.Length);
@@ -178,9 +226,7 @@ namespace MusicRecorder
             RaiseRecordingStateChangedEvent();
         }
 
-        private static int[] mSampleRates = new int[] { 8000, 11025, 22050, 44100 };
-        private static int[] audioFormats = new int[] { (int)Encoding.Pcm8bit, (int)Encoding.Pcm16bit };
-        private static int[] channelConfigs = new int[] { (int)ChannelIn.Mono, (int)ChannelIn.Stereo };
+
 
         public AudioRecord FindAudioRecord()
         {
@@ -213,6 +259,28 @@ namespace MusicRecorder
             return null;
         }
 
+        public AudioRecord FindAudioRecordNew()
+        {
+            try
+            {
+                int bufferSize = AudioRecord.GetMinBufferSize(rate, (ChannelIn)channelConfig, (Encoding)audioEncoding);
+
+                if (bufferSize != (int)Android.Media.TrackStatus.ErrorBadValue)
+                {
+                    AudioRecord recorder = new AudioRecord(AudioSource.Mic, rate, (ChannelIn)channelConfig, (Encoding)audioEncoding, bufferSize);
+
+                    if (recorder.State == State.Initialized)
+                        return recorder;
+                }
+            }
+            catch (Exception e)
+            {
+                // Log.e(TAG, rate + "Exception, keep trying.", e);
+            }
+
+            return null;
+        }
+
         public override async void OnRequestPermissionsResult(int requestCode, string[] permissions, Permission[] grantResults)
         {
             switch (requestCode)
@@ -241,7 +309,7 @@ namespace MusicRecorder
             }
         }
 
-        async Task RequestRecordAudioPermission()
+        private async Task RequestRecordAudioPermission()
         {
             
             string permission = PermissionsAudio[0];
@@ -273,7 +341,7 @@ namespace MusicRecorder
 
         private void InitialiseAudioRecording()
         {
-            audioRecorder = FindAudioRecord();
+            audioRecorder = FindAudioRecordNew();
 
             audioBuffer = new byte[audioRecorder.BufferSizeInFrames];
             audioRecorder.StartRecording();
