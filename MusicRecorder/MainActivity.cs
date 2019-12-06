@@ -36,9 +36,6 @@ namespace MusicRecorder
         private List<byte[]> audioTracks;
         byte[] audioBuffer;
 
-        private byte[] audioBufferTrack1;
-        private byte[] audioBufferTrack2;
-        private byte[] audioBufferTrack3;
         private TextView mainTextView;
 
         private MemoryStream memoryStream;
@@ -77,75 +74,7 @@ namespace MusicRecorder
 
         async Task MixtrackButton_Click()
         {
-            //AssetManager assets = this.Assets;
-            //long totalBytesTrack1 = 1032000;
-            //long totalBytesTrack2 = 1422184;
-            //long totalBytesTrack3 = 1016484;
-            //short[] track1Short;
-            //short[] track2Short;
-            //short[] track3Short;
-
-            //long totalBytes = 37534;
-
-            //rate = 48000;
-            //audioEncoding = Encoding.Pcm16bit;
-
-            //BinaryReader binaryReader = new BinaryReader(assets.Open("sample.wav"));
-
-            //audioBuffer = binaryReader.ReadBytes((Int32)totalBytes);
-
-            //binaryReader.Close();
-
-
-            //binaryReader = new BinaryReader(assets.Open("Track 1.wav"));
-
-            //audioBufferTrack1 = binaryReader.ReadBytes((Int32)totalBytesTrack1);
-
-
-            //track1Short = new short[(int)Math.Ceiling((double)audioBufferTrack1.Length / 2)];
-            //Buffer.BlockCopy(audioBufferTrack1, 0, track1Short, 0, audioBufferTrack1.Length);
-
-            ////var track1ShortList = track1Short.ToList();
-
-            ////var zeroFillArrayLength = totalBytesTrack2 - totalBytesTrack1;
-            ////short[] zeroFillArray = new short[zeroFillArrayLength];
-
-            ////track1ShortList.AddRange(zeroFillArray);
-            ////var reformedTrack1ShortArray = track1ShortList.ToArray();
-            
-            //binaryReader.Close();
-
-            //binaryReader = new BinaryReader(assets.Open("Track 2.wav"));
-
-            //audioBufferTrack2 = binaryReader.ReadBytes((Int32)totalBytesTrack2);
-
-            //track2Short = new short[(int)Math.Ceiling((double)audioBufferTrack2.Length / 2)];
-            //Buffer.BlockCopy(audioBufferTrack2, 0, track2Short, 0, audioBufferTrack2.Length);
-
-            //binaryReader.Close();
-
-            //binaryReader = new BinaryReader(assets.Open("Track 3.wav"));
-
-            //audioBufferTrack3 = binaryReader.ReadBytes((Int32)totalBytesTrack3);
-
-            //track3Short = new short[(int)Math.Ceiling((double)audioBufferTrack3.Length / 2)];
-            //Buffer.BlockCopy(audioBufferTrack3, 0, track3Short, 0, audioBufferTrack3.Length);
-
-            ////var track3ShortList = track3Short.ToList();
-
-            ////zeroFillArrayLength = totalBytesTrack2 - totalBytesTrack3;
-            ////zeroFillArray = new short[zeroFillArrayLength];
-
-            ////track3ShortList.AddRange(zeroFillArray);
-            ////var reformedTrack3ShortArray = track3ShortList.ToArray();
-
-            //binaryReader.Close();
-
-            //iterate through byte array list and convert to short array list
-
-            //set output array length to max length of short array list
-
-            var audioTrackShortList = new List<short[]>();
+             var audioTrackShortList = new List<short[]>();
 
             foreach (var audioTrack in audioTracks)
             {
@@ -156,16 +85,13 @@ namespace MusicRecorder
             }
 
             var output = new short[audioTrackShortList.Max(x => x.Length)];
-            float samplef1 = 0;
-            float samplef2 = 0;
-            float samplef3 = 0;
 
             for (int i = 0; i < output.Length; i++)
             {
                 float mixed = MixTracks(audioTrackShortList, i);
 
                 // reduce the volume a bit:
-                mixed *= (float)0.8;
+               // mixed *= (float)0.8;
                 // hard clipping
                 if (mixed > 1.0f) mixed = 1.0f;
                 if (mixed < -1.0f) mixed = -1.0f;
@@ -175,14 +101,10 @@ namespace MusicRecorder
             }
 
             await PlayAudioTrack(output);
-
-
         }
 
         private float MixTracks(List<short[]> audioTrackShortList, int i)
         {
-            //in mixing loop then create method to iterate through short track array list passig current index
-            // then add array[i] - check for zero and add to mixed float and return
             float mixed = 0;
 
             foreach (var audioTrack in audioTrackShortList)
@@ -201,13 +123,8 @@ namespace MusicRecorder
             if (memoryStream.Length > 0)
             {
                 var audioArray = memoryStream.ToArray();
-           
-                //var audioArrayShort = new short[(int)Math.Ceiling((double)audioArray.Length / 2)];
-                //Buffer.BlockCopy(audioArray, 0, audioArrayShort, 0, audioArray.Length);
 
                 await PlayAudioTrack(audioArray);
-
-                //AudioTrackStop();
             }
         }
 
@@ -401,18 +318,13 @@ namespace MusicRecorder
                     {
                         if (grantResults[0] == Permission.Granted)
                         {
-
                             ////Permission granted
-                            //var snack = Snackbar.Make(layout, "Location permission is available, getting lat/long.", Snackbar.LengthShort);
-                            //snack.Show();
-
-                            //await GetLocationAsync();
+                         
                             await RecordAudio();
                         }
                         else
                         {
                             //Permission Denied :(
-                            //Disabling location functionality
                             var snack = Snackbar.Make(layout, "Audio permission is denied.", Snackbar.LengthShort);
                             snack.Show();
                         }
@@ -441,7 +353,6 @@ namespace MusicRecorder
 
             if (ShouldShowRequestPermissionRationale(permission))
             {
-                //Explain to the user why we need to read the contacts
                 Snackbar.Make(layout, "Permission to record audio required", Snackbar.LengthIndefinite)
                         .SetAction("OK", v => RequestPermissions(PermissionsAudio, RequestLocationId))
                         .Show();
