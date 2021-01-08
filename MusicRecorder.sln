@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.26430.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicRecorder", "MusicRecorder\MusicRecorder.csproj", "{B5592FDD-3C1C-4A64-877D-3B06B70F7814}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicRecorder.Service", "MusicRecorder.Service\MusicRecorder.Service.csproj", "{39C6762B-FC45-46C1-9031-426D6958CB42}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -17,8 +19,15 @@ Global
 		{B5592FDD-3C1C-4A64-877D-3B06B70F7814}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B5592FDD-3C1C-4A64-877D-3B06B70F7814}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B5592FDD-3C1C-4A64-877D-3B06B70F7814}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{39C6762B-FC45-46C1-9031-426D6958CB42}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{39C6762B-FC45-46C1-9031-426D6958CB42}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{39C6762B-FC45-46C1-9031-426D6958CB42}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{39C6762B-FC45-46C1-9031-426D6958CB42}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0EAF9BEC-A77E-449E-AF11-DDFBE1F20CBA}
 	EndGlobalSection
 EndGlobal
